@@ -13,9 +13,12 @@
 
         <div class="upload-box">
             <p><strong>Upload files:</strong> .txt, .pdf, .pptx, .mp4, .m4a</p>
+
+            <!-- Correct form -->
             <form
                 hx-post="/upload"
                 hx-target="#materials-panel"
+                hx-swap="outerHTML"
                 hx-indicator="#upload-loading"
                 enctype="multipart/form-data"
             >
@@ -36,8 +39,8 @@
             Uploading/processing material...
         </div>
 
+        <!-- This gets replaced by upload_status.html -->
         <div id="materials-panel">
-            <!-- filled by upload_status fragment -->
             <div id="materials-list">
                 <em>No materials uploaded yet.</em>
             </div>
@@ -56,27 +59,34 @@
             <button class="primary"
                     id="btn-summary"
                     disabled
+                    hx-trigger="click"
                     hx-target="#results-panel"
                     hx-indicator="#generate-loading">
                 Summary
             </button>
+
             <button class="secondary"
                     id="btn-keyterms"
                     disabled
+                    hx-trigger="click"
                     hx-target="#results-panel"
                     hx-indicator="#generate-loading">
                 Key Terms
             </button>
+
             <button class="secondary"
                     id="btn-questions"
                     disabled
+                    hx-trigger="click"
                     hx-target="#results-panel"
                     hx-indicator="#generate-loading">
                 Practice Questions
             </button>
+
             <button class="secondary"
                     id="btn-resources"
                     disabled
+                    hx-trigger="click"
                     hx-target="#results-panel"
                     hx-indicator="#generate-loading">
                 External Resources
@@ -94,12 +104,17 @@
 </div>
 
 <script>
+/* ================================
+        SESSION HANDLING LOGIC
+   ================================ */
+
 let currentSessionId = null;
 
-// Called from upload_status fragment
+// Called when we know session id
 function setSessionId(id) {
     currentSessionId = id;
-    document.getElementById("session_id_input").value = id;
+    const hidden = document.getElementById("session_id_input");
+    if (hidden) hidden.value = id;
     enableStudyButtons();
 }
 
@@ -107,11 +122,13 @@ function enableStudyButtons() {
     if (!currentSessionId) return;
 
     const summaryBtn = document.getElementById("btn-summary");
-    const keyBtn = document.getElementById("btn-keyterms");
-    const qBtn = document.getElementById("btn-questions");
-    const rBtn = document.getElementById("btn-resources");
+    const keyBtn     = document.getElementById("btn-keyterms");
+    const qBtn       = document.getElementById("btn-questions");
+    const rBtn       = document.getElementById("btn-resources");
 
-    summaryBtn.disabled = keyBtn.disabled = qBtn.disabled = rBtn.disabled = false;
+    [summaryBtn, keyBtn, qBtn, rBtn].forEach(btn => {
+        btn.disabled = false;
+    });
 
     summaryBtn.setAttribute("hx-get", `/summary/${currentSessionId}`);
     keyBtn.setAttribute("hx-get", `/keyterms/${currentSessionId}`);
@@ -119,16 +136,30 @@ function enableStudyButtons() {
     rBtn.setAttribute("hx-get", `/resources/${currentSessionId}`);
 }
 
-// -------- Live recording with MediaRecorder --------
+/* SAFARI + CHROME + FIREFOX:
+   ALWAYS fire this after HTMX updates materials-panel.
+*/
+document.body.addEventListener("htmx:afterSettle", function () {
+    const panel = document.getElementById("materials-panel");
+    if (!panel) return;
+
+    const sid = panel.getAttribute("data-session-id");
+    if (sid && sid !== currentSessionId) {
+        setSessionId(sid);
+    }
+});
+
+/* ================================
+         LIVE AUDIO RECORDING 
+   ================================ */
+
 let mediaRecorder = null;
 let recordedChunks = [];
-
 const recordBtn = document.getElementById("record-btn");
 const recordStatus = document.getElementById("record-status");
 
 recordBtn.addEventListener("click", async () => {
     if (!mediaRecorder || mediaRecorder.state === "inactive") {
-        // Start recording
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder = new MediaRecorder(stream);
@@ -153,7 +184,6 @@ recordBtn.addEventListener("click", async () => {
             alert("Could not access microphone.");
         }
     } else if (mediaRecorder.state === "recording") {
-        // Stop recording
         mediaRecorder.stop();
         recordBtn.textContent = "🎙 Start Recording";
     }
@@ -172,7 +202,7 @@ async function uploadLiveAudio(blob) {
     });
 
     const html = await resp.text();
-    document.getElementById("materials-panel").innerHTML = html;
+    document.getElementById("materials-panel").outerHTML = html;
     recordStatus.textContent = "Live audio processed.";
 }
 </script>
