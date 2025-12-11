@@ -1,8 +1,3 @@
-/**
- * Helektron Study Assistant - Frontend JavaScript
- * Supports KG7 (API/JSON), KG8 (HTMX), KG9 (User Interaction CRUD)
- */
-
  let currentSessionId = null;
  let buttonsInitialized = false;
  let latestTranscript = null;
@@ -112,7 +107,7 @@
  function showViewTranscriptButton() {
      recordStatus.innerHTML = `
          <div class="transcript-ready">
-             <span>✅ Transcription complete!</span>
+             <span>Transcription complete!</span>
              <button class="view-transcript-btn" onclick="openTranscriptModal()">View Transcript</button>
          </div>
      `;
@@ -132,7 +127,7 @@
      modal.innerHTML = `
          <div class="modal-content">
              <div class="modal-header">
-                 <h3>📝 Transcript</h3>
+                 <h3>Transcript</h3>
                  <button class="modal-close" onclick="closeTranscriptModal()">✕</button>
              </div>
              <div class="modal-body">
@@ -178,7 +173,7 @@
          const btn = document.querySelector(".btn-copy");
          if (btn) {
              const orig = btn.textContent;
-             btn.textContent = "✅ Copied!";
+             btn.textContent = "Copied!";
              setTimeout(() => btn.textContent = orig, 2000);
          }
      });

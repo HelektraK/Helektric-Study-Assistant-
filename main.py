@@ -21,18 +21,17 @@ from pydantic import BaseModel, Field
 
 # ==============================================================================
 # SECTION 1: DATA MODELS (KG5 - Data Model)
-# Pydantic schemas defining how data is organized and validated
 # ==============================================================================
 
 class FileEntry(BaseModel):
-    """Schema for an uploaded file entry."""
+    """Schema for an uploaded file entry"""
     name: str = Field(..., min_length=1, max_length=255)
     type: str
     text: str = ""
     added_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
 
 class Session(BaseModel):
-    """Schema for a study session."""
+    """Schema for a study session"""
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
@@ -40,18 +39,18 @@ class Session(BaseModel):
     files: List[FileEntry] = Field(default_factory=list)
 
 class SessionUpdateRequest(BaseModel):
-    """Request schema for updating a session (KG5)."""
+    """Request schema for updating a session (KG5)"""
     name: Optional[str] = Field(None, min_length=1, max_length=100)
 
 class TranscriptResponse(BaseModel):
-    """Response schema for transcript endpoint (KG5, KG7)."""
+    """Response schema for transcript endpoint (KG5, KG7)"""
     text: Optional[str] = None
     name: Optional[str] = None
     added_at: Optional[str] = None
     error: Optional[str] = None
 
 class DeleteResponse(BaseModel):
-    """Response schema for delete operations (KG5, KG7)."""
+    """Response schema for delete operations (KG5, KG7)"""
     success: bool
     message: str
     deleted_item: Optional[str] = None
@@ -61,7 +60,7 @@ ALLOWED_EXTENSIONS = {"txt", "pdf", "pptx", "mp4", "m4a", "wav", "webm"}
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 
 def validate_file_extension(filename: str) -> str:
-    """Validate file extension (KG3)."""
+    """Validate file extension (KG3)"""
     if not filename or '.' not in filename:
         raise ValueError("Invalid filename")
     ext = filename.rsplit('.', 1)[-1].lower()
@@ -70,7 +69,7 @@ def validate_file_extension(filename: str) -> str:
     return ext
 
 def validate_session_id(session_id: str) -> bool:
-    """Validate UUID format (KG3)."""
+    """Validate UUID format (KG3)"""
     pattern = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.I)
     return bool(pattern.match(session_id))
 
@@ -100,12 +99,11 @@ app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), na
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 # ==============================================================================
-# SECTION 3: DATA ACCESS LAYER - SESSION CRUD (KG6 - CRUD Operations)
-# Handles persistent data storage
+# SECTION 3: DATA ACCESS LAYER (KG6 - CRUD Operations)
 # ==============================================================================
 
 def load_sessions() -> Dict[str, Any]:
-    """Load sessions from JSON file (KG6 - Read)."""
+    """Load sessions from JSON file (KG6 - Read)"""
     if not os.path.exists(SESSIONS_PATH):
         return {}
     with open(SESSIONS_PATH, "r") as f:
@@ -115,12 +113,12 @@ def load_sessions() -> Dict[str, Any]:
             return {}
 
 def save_sessions(sessions: Dict[str, Any]) -> None:
-    """Save sessions to JSON file (KG6 - Persistent Data)."""
+    """Save sessions to JSON file (KG6 - Persistent Data)"""
     with open(SESSIONS_PATH, "w") as f:
         json.dump(sessions, f, indent=2)
 
 def create_session() -> Session:
-    """Create a new session (KG6 - Create)."""
+    """Create a new session (KG6 - Create)"""
     session = Session()
     sessions = load_sessions()
     sessions[session.id] = session.model_dump()
@@ -128,7 +126,7 @@ def create_session() -> Session:
     return session
 
 def get_session(session_id: str) -> Optional[Session]:
-    """Get a session by ID (KG6 - Read)."""
+    """Get a session by ID (KG6 - Read)"""
     sessions = load_sessions()
     data = sessions.get(session_id)
     if not data:
@@ -136,7 +134,7 @@ def get_session(session_id: str) -> Optional[Session]:
     return Session(**data)
 
 def update_session(session: Session) -> Session:
-    """Update a session (KG6 - Update)."""
+    """Update a session (KG6 - Update)"""
     sessions = load_sessions()
     session.updated_at = datetime.utcnow().isoformat()
     sessions[session.id] = session.model_dump()
@@ -144,7 +142,7 @@ def update_session(session: Session) -> Session:
     return session
 
 def delete_session(session_id: str) -> bool:
-    """Delete a session (KG6 - Delete)."""
+    """Delete a session (KG6 - Delete)"""
     sessions = load_sessions()
     if session_id not in sessions:
         return False
@@ -153,7 +151,7 @@ def delete_session(session_id: str) -> bool:
     return True
 
 def get_or_create_session(session_id: Optional[str]) -> Session:
-    """Get existing or create new session."""
+    """Get existing or create new session"""
     if session_id:
         session = get_session(session_id)
         if session:
@@ -161,7 +159,7 @@ def get_or_create_session(session_id: Optional[str]) -> Session:
     return create_session()
 
 def add_file_to_session(session_id: str, filename: str, file_type: str, text: str) -> Session:
-    """Add a file to session (KG6 - Update)."""
+    """Add a file to session (KG6 - Update)"""
     session = get_session(session_id)
     if not session:
         raise ValueError("Session not found")
@@ -169,7 +167,7 @@ def add_file_to_session(session_id: str, filename: str, file_type: str, text: st
     return update_session(session)
 
 def delete_file_from_session(session_id: str, file_index: int) -> FileEntry:
-    """Delete a file from session (KG6 - Delete)."""
+    """Delete a file from session (KG6 - Delete)"""
     session = get_session(session_id)
     if not session:
         raise ValueError("Session not found")
@@ -180,7 +178,7 @@ def delete_file_from_session(session_id: str, file_index: int) -> FileEntry:
     return removed
 
 def get_session_text(session_id: str) -> str:
-    """Get combined text from all files in session."""
+    """Get combined text from all files in session"""
     session = get_session(session_id)
     if not session:
         return ""
@@ -192,11 +190,11 @@ def get_session_text(session_id: str) -> str:
 # ==============================================================================
 
 def get_vector_store_path(session_id: str) -> str:
-    """Get path to vector store for a session."""
+    """Get path to vector store for a session"""
     return os.path.join(VECTOR_STORE_DIR, f"{session_id}_vs.json")
 
 def load_vector_store(session_id: str) -> List[Dict]:
-    """Load vector store for a session."""
+    """Load vector store for a session"""
     path = get_vector_store_path(session_id)
     if not os.path.exists(path):
         return []
@@ -207,13 +205,13 @@ def load_vector_store(session_id: str) -> List[Dict]:
             return []
 
 def save_vector_store(session_id: str, store: List[Dict]) -> None:
-    """Save vector store for a session."""
+    """Save vector store for a session"""
     path = get_vector_store_path(session_id)
     with open(path, "w") as f:
         json.dump(store, f, indent=2)
 
 def embed_text_ollama(text: str) -> List[float]:
-    """Generate embedding using Ollama."""
+    """Generate embedding using Ollama"""
     try:
         response = requests.post(
             f"{OLLAMA_BASE_URL}/api/embeddings",
@@ -226,7 +224,7 @@ def embed_text_ollama(text: str) -> List[float]:
         raise RuntimeError(f"Ollama embedding failed: {e}")
 
 def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 200) -> List[str]:
-    """Split text into overlapping chunks for RAG."""
+    """Split text into overlapping chunks for RAG"""
     if len(text) <= chunk_size:
         return [text] if text.strip() else []
     
@@ -251,7 +249,7 @@ def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 200) -> List[st
     return chunks
 
 def add_to_vector_store(session_id: str, text: str, metadata: Dict = None) -> int:
-    """Add document to RAG vector store."""
+    """Add document to RAG vector store"""
     if not text.strip():
         return 0
     
@@ -273,7 +271,7 @@ def add_to_vector_store(session_id: str, text: str, metadata: Dict = None) -> in
     return len(chunks)
 
 def search_vector_store(session_id: str, query: str, top_k: int = 3) -> List[Dict]:
-    """Search RAG vector store using cosine similarity."""
+    """Search RAG vector store using cosine similarity"""
     store = load_vector_store(session_id)
     if not store:
         return []
@@ -300,7 +298,7 @@ def search_vector_store(session_id: str, query: str, top_k: int = 3) -> List[Dic
     return results[:top_k]
 
 def get_rag_context(session_id: str, query: str, top_k: int = 5) -> str:
-    """Get relevant context from RAG for a query."""
+    """Get relevant context from RAG for a query"""
     results = search_vector_store(session_id, query, top_k)
     if not results:
         return ""
@@ -313,13 +311,13 @@ def get_rag_context(session_id: str, query: str, top_k: int = 5) -> str:
     return "\n\n---\n\n".join(context_parts)
 
 def clear_vector_store(session_id: str) -> None:
-    """Clear RAG vector store for a session."""
+    """Clear RAG vector store for a session"""
     path = get_vector_store_path(session_id)
     if os.path.exists(path):
         os.remove(path)
 
 def rebuild_vector_store(session_id: str) -> None:
-    """Rebuild RAG vector store from session files."""
+    """Rebuild RAG vector store from session files"""
     clear_vector_store(session_id)
     session = get_session(session_id)
     if not session:
@@ -333,19 +331,19 @@ def rebuild_vector_store(session_id: str) -> None:
 # ==============================================================================
 
 def extract_txt(path: str) -> str:
-    """Extract text from plain text file."""
+    """Extract text from plain text file"""
     with open(path, "r", encoding="utf-8", errors="ignore") as f:
         return f.read()
 
 def extract_pdf(path: str) -> str:
-    """Extract text from PDF file."""
+    """Extract text from PDF file"""
     doc = fitz.open(path)
     texts = [page.get_text() for page in doc]
     doc.close()
     return "\n".join(texts)
 
 def extract_pptx(path: str) -> str:
-    """Extract text from PowerPoint file."""
+    """Extract text from PowerPoint file"""
     prs = Presentation(path)
     texts = []
     for slide in prs.slides:
@@ -355,7 +353,7 @@ def extract_pptx(path: str) -> str:
     return "\n".join(texts)
 
 def transcribe_audio(path: str) -> str:
-    """Transcribe audio using whisper.cpp."""
+    """Transcribe audio using whisper.cpp"""
     # Find whisper binary
     candidates = [
         os.path.join(BASE_DIR, "whisper.cpp", "build", "bin", "whisper-cli"),
@@ -423,7 +421,7 @@ def transcribe_audio(path: str) -> str:
     return transcript if transcript else "[No speech detected]"
 
 def extract_text_from_file(file_path: str, extension: str) -> str:
-    """Extract text from file based on extension."""
+    """Extract text from file based on extension"""
     extractors = {
         "txt": extract_txt,
         "pdf": extract_pdf,
@@ -439,7 +437,7 @@ def extract_text_from_file(file_path: str, extension: str) -> str:
     return extractor(file_path)
 
 def get_file_category(extension: str) -> str:
-    """Get file category from extension."""
+    """Get file category from extension"""
     return "audio" if extension in {"mp4", "m4a", "wav", "webm"} else "document"
 
 # ==============================================================================
@@ -447,7 +445,7 @@ def get_file_category(extension: str) -> str:
 # ==============================================================================
 
 def call_ollama(prompt: str) -> str:
-    """Call Ollama LLM model."""
+    """Call Ollama LLM model"""
     try:
         response = requests.post(
             f"{OLLAMA_BASE_URL}/api/generate",
@@ -464,7 +462,7 @@ def call_ollama(prompt: str) -> str:
         return f"[Ollama API Error: {e}]"
 
 def get_summary_prompt(text: str, rag_context: str = "") -> str:
-    """Generate summary prompt with optional RAG context."""
+    """Generate summary prompt with optional RAG context"""
     context_section = f"\n---RELEVANT CONTEXT (RAG)---\n{rag_context}\n---END CONTEXT---\n" if rag_context else ""
     return f"""
 Based on the following combined study materials, create a structured study summary.
@@ -483,7 +481,7 @@ Sections to include:
 """
 
 def get_keyterms_prompt(text: str, rag_context: str = "") -> str:
-    """Generate key terms prompt."""
+    """Generate key terms prompt"""
     context_section = f"\n---TERMINOLOGY CONTEXT (RAG)---\n{rag_context}\n---END CONTEXT---\n" if rag_context else ""
     return f"""
 Extract **10-20 key terms** with definitions from the materials below.
@@ -499,7 +497,7 @@ For each term include:
 """
 
 def get_questions_prompt(text: str, rag_context: str = "") -> str:
-    """Generate questions prompt."""
+    """Generate questions prompt"""
     context_section = f"\n---KEY CONCEPTS (RAG)---\n{rag_context}\n---END CONTEXT---\n" if rag_context else ""
     return f"""
 Create **8-12 practice questions** based on the materials below.
@@ -517,7 +515,7 @@ Do NOT provide answers.
 """
 
 def get_resources_prompt(text: str, rag_context: str = "") -> str:
-    """Generate resources prompt."""
+    """Generate resources prompt"""
     context_section = f"\n---TOPICS (RAG)---\n{rag_context}\n---END CONTEXT---\n" if rag_context else ""
     return f"""
 Recommend **3-7 external resources** for further study based on the materials below.
@@ -537,9 +535,47 @@ For each resource include:
 # SECTION 7: DEPENDENCY INJECTION (KG4)
 # ==============================================================================
 
-def get_current_session(session_id: Optional[str] = None) -> Session:
-    """Dependency for getting/creating session (KG4)."""
-    return get_or_create_session(session_id)
+def get_session_repo():
+    """Dependency that provides session repository functions (KG4)"""
+    return {
+        "load": load_sessions,
+        "save": save_sessions,
+        "get": get_session,
+        "create": create_session,
+        "update": update_session,
+        "delete": delete_session,
+        "get_or_create": get_or_create_session,
+    }
+
+def get_file_service():
+    """Dependency that provides file extraction service (KG4)"""
+    return {
+        "extract": extract_text_from_file,
+        "get_category": get_file_category,
+        "transcribe": transcribe_audio,
+    }
+
+def get_ai_service():
+    """Dependency that provides AI/LLM service (KG4)"""
+    return {
+        "generate": call_ollama,
+        "prompts": {
+            "summary": get_summary_prompt,
+            "keyterms": get_keyterms_prompt,
+            "questions": get_questions_prompt,
+            "resources": get_resources_prompt,
+        }
+    }
+
+def get_rag_service():
+    """Dependency that provides RAG service (KG4)"""
+    return {
+        "add": add_to_vector_store,
+        "search": search_vector_store,
+        "get_context": get_rag_context,
+        "clear": clear_vector_store,
+        "rebuild": rebuild_vector_store,
+    }
 
 # ==============================================================================
 # SECTION 8: UI ENDPOINTS (KG1, KG8 - UI Endpoints & HTMX)
@@ -547,7 +583,7 @@ def get_current_session(session_id: Optional[str] = None) -> Session:
 
 @app.get("/", response_class=HTMLResponse, tags=["UI"])
 def index(request: Request):
-    """Main page (KG1 - Endpoint Definition, KG8 - UI Endpoint)."""
+    """Main page (KG1 - Endpoint Definition, KG8 - UI Endpoint)"""
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.post("/upload", response_class=HTMLResponse, tags=["UI"])
@@ -555,9 +591,12 @@ async def upload_material(
     request: Request,
     file: UploadFile = File(...),
     session_id: Optional[str] = Form(None),
+    session_repo: dict = Depends(get_session_repo),
+    file_service: dict = Depends(get_file_service),
+    rag_service: dict = Depends(get_rag_service),
 ):
     """
-    Upload material (KG1, KG2-POST, KG3-Validation, KG6-Create, KG8-HTMX).
+    Upload material (KG1, KG2-POST, KG3-Validation, KG4-DI, KG6-Create, KG8-HTMX).
     """
     # Validate file extension (KG3)
     try:
@@ -576,33 +615,33 @@ async def upload_material(
     if session_id and not validate_session_id(session_id):
         session_id = None
     
-    # Get or create session (KG6 - Create)
-    session = get_or_create_session(session_id)
+    # Get or create session using injected dependency (KG4, KG6 - Create)
+    session = session_repo["get_or_create"](session_id)
     
     # Save file
-    file_type = get_file_category(ext)
+    file_type = file_service["get_category"](ext)
     save_dir = AUDIO_DIR if file_type == "audio" else DOC_DIR
     saved_path = os.path.join(save_dir, f"{uuid.uuid4().hex}_{file.filename}")
     with open(saved_path, "wb") as f:
         f.write(contents)
     
-    # Extract text
+    # Extract text using injected service (KG4)
     try:
-        text = extract_text_from_file(saved_path, ext)
+        text = file_service["extract"](saved_path, ext)
     except Exception as e:
         text = f"[Error: {e}]"
     
     # Add to session (KG6 - Create/Update)
     add_file_to_session(session.id, file.filename, file_type, text)
     
-    # Add to RAG vector store
+    # Add to RAG vector store using injected service (KG4)
     try:
-        add_to_vector_store(session.id, text, {"filename": file.filename, "type": file_type})
+        rag_service["add"](session.id, text, {"filename": file.filename, "type": file_type})
     except Exception as e:
         print(f"RAG indexing warning: {e}")
     
     # Return HTML fragment (KG8 - HTMX)
-    session = get_session(session.id)
+    session = session_repo["get"](session.id)
     return templates.TemplateResponse(
         "fragments/upload_status.html",
         {"request": request, "session_id": session.id, "files": [f.model_dump() for f in session.files]},
@@ -614,7 +653,7 @@ async def upload_live_audio(
     audio: UploadFile = File(...),
     session_id: Optional[str] = Form(None),
 ):
-    """Live audio transcription (KG1, KG2-POST, KG8-HTMX)."""
+    """Live audio transcription (KG1, KG2-POST, KG8-HTMX)"""
     # Validate (KG3)
     try:
         ext = validate_file_extension(audio.filename or "recording.webm")
@@ -656,73 +695,101 @@ async def upload_live_audio(
 
 # Study tool endpoints (KG8 - HTMX UI) - All use RAG
 @app.get("/summary/{session_id}", response_class=HTMLResponse, tags=["UI", "Study Tools"])
-def generate_summary(request: Request, session_id: str):
-    """Generate summary with RAG (KG1, KG2-GET, KG3, KG8)."""
+def generate_summary(
+    request: Request, 
+    session_id: str,
+    session_repo: dict = Depends(get_session_repo),
+    ai_service: dict = Depends(get_ai_service),
+    rag_service: dict = Depends(get_rag_service),
+):
+    """Generate summary with RAG (KG1, KG2-GET, KG3, KG4-DI, KG8)"""
     if not validate_session_id(session_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid session ID")
     
-    session = get_session(session_id)
+    session = session_repo["get"](session_id)
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
     
     text = get_session_text(session_id)
-    rag_context = get_rag_context(session_id, "main concepts overview summary key ideas")
-    content = call_ollama(get_summary_prompt(text, rag_context)) if text.strip() else "No material uploaded yet."
+    rag_context = rag_service["get_context"](session_id, "main concepts overview summary key ideas")
+    prompt = ai_service["prompts"]["summary"](text, rag_context)
+    content = ai_service["generate"](prompt) if text.strip() else "No material uploaded yet."
     
     return templates.TemplateResponse("fragments/summary.html", {"request": request, "content": content})
 
 @app.get("/keyterms/{session_id}", response_class=HTMLResponse, tags=["UI", "Study Tools"])
-def generate_keyterms(request: Request, session_id: str):
-    """Generate key terms with RAG (KG1, KG2-GET, KG3, KG8)."""
+def generate_keyterms(
+    request: Request, 
+    session_id: str,
+    session_repo: dict = Depends(get_session_repo),
+    ai_service: dict = Depends(get_ai_service),
+    rag_service: dict = Depends(get_rag_service),
+):
+    """Generate key terms with RAG (KG1, KG2-GET, KG3, KG4-DI, KG8)"""
     if not validate_session_id(session_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid session ID")
     
-    session = get_session(session_id)
+    session = session_repo["get"](session_id)
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
     
     text = get_session_text(session_id)
-    rag_context = get_rag_context(session_id, "definitions terminology vocabulary key terms")
-    content = call_ollama(get_keyterms_prompt(text, rag_context)) if text.strip() else "No material uploaded yet."
+    rag_context = rag_service["get_context"](session_id, "definitions terminology vocabulary key terms")
+    prompt = ai_service["prompts"]["keyterms"](text, rag_context)
+    content = ai_service["generate"](prompt) if text.strip() else "No material uploaded yet."
     
     return templates.TemplateResponse("fragments/keyterms.html", {"request": request, "content": content})
 
 @app.get("/questions/{session_id}", response_class=HTMLResponse, tags=["UI", "Study Tools"])
-def generate_questions_view(request: Request, session_id: str):
-    """Generate questions with RAG (KG1, KG2-GET, KG3, KG8)."""
+def generate_questions_view(
+    request: Request, 
+    session_id: str,
+    session_repo: dict = Depends(get_session_repo),
+    ai_service: dict = Depends(get_ai_service),
+    rag_service: dict = Depends(get_rag_service),
+):
+    """Generate questions with RAG (KG1, KG2-GET, KG3, KG4-DI, KG8)"""
     if not validate_session_id(session_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid session ID")
     
-    session = get_session(session_id)
+    session = session_repo["get"](session_id)
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
     
     text = get_session_text(session_id)
-    rag_context = get_rag_context(session_id, "important concepts examples problems applications")
-    content = call_ollama(get_questions_prompt(text, rag_context)) if text.strip() else "No material uploaded yet."
+    rag_context = rag_service["get_context"](session_id, "important concepts examples problems applications")
+    prompt = ai_service["prompts"]["questions"](text, rag_context)
+    content = ai_service["generate"](prompt) if text.strip() else "No material uploaded yet."
     
     return templates.TemplateResponse("fragments/questions.html", {"request": request, "content": content})
 
 @app.get("/resources/{session_id}", response_class=HTMLResponse, tags=["UI", "Study Tools"])
-def generate_resources_view(request: Request, session_id: str):
-    """Generate resources with RAG (KG1, KG2-GET, KG3, KG8)."""
+def generate_resources_view(
+    request: Request, 
+    session_id: str,
+    session_repo: dict = Depends(get_session_repo),
+    ai_service: dict = Depends(get_ai_service),
+    rag_service: dict = Depends(get_rag_service),
+):
+    """Generate resources with RAG (KG1, KG2-GET, KG3, KG4-DI, KG8)"""
     if not validate_session_id(session_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid session ID")
     
-    session = get_session(session_id)
+    session = session_repo["get"](session_id)
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
     
     text = get_session_text(session_id)
-    rag_context = get_rag_context(session_id, "topics subjects domain field area")
-    content = call_ollama(get_resources_prompt(text, rag_context)) if text.strip() else "No material uploaded yet."
+    rag_context = rag_service["get_context"](session_id, "topics subjects domain field area")
+    prompt = ai_service["prompts"]["resources"](text, rag_context)
+    content = ai_service["generate"](prompt) if text.strip() else "No material uploaded yet."
     
     return templates.TemplateResponse("fragments/resources.html", {"request": request, "content": content})
 
 # Delete file UI endpoint (KG8, KG9 - User Interaction Delete)
 @app.delete("/session/{session_id}/file/{file_index}", response_class=HTMLResponse, tags=["UI"])
 def delete_file_ui(request: Request, session_id: str, file_index: int):
-    """Delete file with HTMX response (KG1, KG2-DELETE, KG6-Delete, KG8, KG9)."""
+    """Delete file with HTMX response (KG1, KG2-DELETE, KG6-Delete, KG8, KG9)"""
     if not validate_session_id(session_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid session ID")
     if file_index < 0:
@@ -749,7 +816,7 @@ def delete_file_ui(request: Request, session_id: str, file_index: int):
 
 @app.get("/api/transcript/{session_id}", response_model=TranscriptResponse, tags=["API"])
 def get_latest_transcript(session_id: str):
-    """Get latest transcript as JSON (KG1, KG2-GET, KG7-JSON)."""
+    """Get latest transcript as JSON (KG1, KG2-GET, KG7-JSON)"""
     if not validate_session_id(session_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid session ID")
     
@@ -766,7 +833,7 @@ def get_latest_transcript(session_id: str):
 
 @app.get("/api/session/{session_id}", tags=["API"])
 def get_session_api(session_id: str):
-    """Get session details as JSON (KG1, KG2-GET, KG7-JSON)."""
+    """Get session details as JSON (KG1, KG2-GET, KG7-JSON)"""
     if not validate_session_id(session_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid session ID")
     
@@ -784,7 +851,7 @@ def get_session_api(session_id: str):
 
 @app.put("/api/session/{session_id}", tags=["API"])
 def update_session_api(session_id: str, data: SessionUpdateRequest):
-    """Update session (KG1, KG2-PUT, KG6-Update, KG7-JSON)."""
+    """Update session (KG1, KG2-PUT, KG6-Update, KG7-JSON)"""
     if not validate_session_id(session_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid session ID")
     
@@ -804,7 +871,7 @@ def update_session_api(session_id: str, data: SessionUpdateRequest):
 
 @app.delete("/api/session/{session_id}", response_model=DeleteResponse, tags=["API"])
 def delete_session_api(session_id: str):
-    """Delete session (KG1, KG2-DELETE, KG6-Delete, KG7-JSON)."""
+    """Delete session (KG1, KG2-DELETE, KG6-Delete, KG7-JSON)"""
     if not validate_session_id(session_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid session ID")
     
@@ -816,7 +883,7 @@ def delete_session_api(session_id: str):
 
 @app.delete("/api/session/{session_id}/file/{file_index}", response_model=DeleteResponse, tags=["API"])
 def delete_file_api(session_id: str, file_index: int):
-    """Delete file from session (KG1, KG2-DELETE, KG6-Delete, KG7-JSON)."""
+    """Delete file from session (KG1, KG2-DELETE, KG6-Delete, KG7-JSON)"""
     if not validate_session_id(session_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid session ID")
     if file_index < 0:
@@ -833,7 +900,7 @@ def delete_file_api(session_id: str, file_index: int):
 
 @app.get("/api/rag/stats/{session_id}", tags=["API", "RAG"])
 def get_rag_stats(session_id: str):
-    """Get RAG vector store stats (KG7-JSON)."""
+    """Get RAG vector store stats (KG7-JSON)"""
     if not validate_session_id(session_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid session ID")
     
@@ -848,7 +915,7 @@ def get_rag_stats(session_id: str):
 
 @app.get("/health", tags=["System"])
 def health_check():
-    """Health check (KG2 - 200 OK status code)."""
+    """Health check (KG2 - 200 OK status code)"""
     return JSONResponse(status_code=status.HTTP_200_OK, content={
         "status": "healthy",
         "version": "2.0.0",
